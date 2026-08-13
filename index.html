@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDF Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+  :root{
+    --paper:#EDE8DC;
+    --paper-card:#FBF9F3;
+    --ink:#20242B;
+    --ink-soft:#5B5F66;
+    --rule:#D8D0BC;
+    --rust:#B5502E;
+    --rust-dark:#8E3D22;
+    --teal:#2F6F62;
+    --shadow: 0 1px 2px rgba(32,36,43,0.06), 0 6px 16px rgba(32,36,43,0.08);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(32,36,43,0.05) 1px, transparent 0);
+    background-size: 18px 18px;
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+  }
+  header{
+    padding:32px 28px 18px;
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:16px;
+    border-bottom:1px solid var(--rule);
+  }
+  .brand{display:flex;align-items:center;gap:14px;}
+  .stamp{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    letter-spacing:0.08em;
+    color:var(--paper-card);
+    background:var(--rust);
+    padding:7px 10px;
+    border-radius:3px;
+    transform:rotate(-4deg);
+    box-shadow:var(--shadow);
+    text-transform:uppercase;
+  }
+  h1{
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    font-size:30px;
+    margin:0;
+    letter-spacing:-0.01em;
+  }
+  .tagline{font-size:13px;color:var(--ink-soft);margin-top:2px;}
+  .counts{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink-soft);}
+
+  .toolbar{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    padding:16px 28px;
+    align-items:center;
+    border-bottom:1px solid var(--rule);
+    background:rgba(251,249,243,0.5);
+    position:sticky;
+    top:0;
+    z-index:5;
+    backdrop-filter:blur(6px);
+  }
+  button, .filebtn{
+    font-family:'Inter',sans-serif;
+    font-size:13px;
+    font-weight:600;
+    border:1px solid var(--ink);
+    background:var(--paper-card);
+    color:var(--ink);
+    padding:9px 14px;
+    border-radius:5px;
+    cursor:pointer;
+    transition:transform .08s ease, background .15s ease;
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+  }
+  button:hover:not(:disabled), .filebtn:hover{background:var(--ink);color:var(--paper-card);}
+  button:active:not(:disabled){transform:scale(0.97);}
+  button:disabled{opacity:0.35;cursor:not-allowed;}
+  button.primary{background:var(--rust);border-color:var(--rust-dark);color:#fff;}
+  button.primary:hover:not(:disabled){background:var(--rust-dark);}
+  .spacer{flex:1;}
+  input[type=file]{display:none;}
+
+  main{padding:26px 28px 80px;}
+  .empty{
+    margin-top:60px;
+    text-align:center;
+    color:var(--ink-soft);
+  }
+  .empty .stamp{position:static;transform:rotate(-2deg);display:inline-block;margin-bottom:14px;}
+  .empty h2{font-family:'Fraunces',serif;font-weight:500;color:var(--ink);}
+
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(150px,1fr));
+    gap:18px;
+  }
+  .card{
+    background:var(--paper-card);
+    border:1px solid var(--rule);
+    border-radius:6px;
+    box-shadow:var(--shadow);
+    padding:8px;
+    cursor:grab;
+    position:relative;
+    transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+    user-select:none;
+  }
+  .card:active{cursor:grabbing;}
+  .card.dragging{opacity:0.35;}
+  .card.drag-over{border-color:var(--rust);transform:translateY(-2px);}
+  .card.selected{border-color:var(--teal);box-shadow:0 0 0 2px var(--teal), var(--shadow);}
+  .thumbwrap{
+    position:relative;
+    border:1px solid var(--rule);
+    background:#fff;
+    overflow:hidden;
+    border-radius:2px;
+  }
+  .thumbwrap img{display:block;width:100%;height:auto;transition:transform .2s ease;}
+  .tag{
+    position:absolute;top:6px;left:6px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:9px;background:rgba(32,36,43,0.78);color:#fff;
+    padding:2px 5px;border-radius:2px;letter-spacing:.03em;
+    max-width:80%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .check{
+    position:absolute;top:6px;right:6px;width:18px;height:18px;
+    border-radius:50%;border:1.5px solid var(--ink-soft);background:#fff;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+  }
+  .card.selected .check{background:var(--teal);border-color:var(--teal);color:#fff;}
+  .meta{
+    display:flex;justify-content:space-between;align-items:center;
+    margin-top:7px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-soft);
+  }
+  .cardbtns{display:flex;gap:4px;}
+  .iconbtn{
+    border:none;background:transparent;color:var(--ink-soft);padding:3px 5px;
+    font-size:13px;border-radius:3px;cursor:pointer;
+  }
+  .iconbtn:hover{background:var(--rule);color:var(--ink);}
+
+  .loading-row{display:flex;align-items:center;gap:10px;color:var(--ink-soft);font-size:13px;padding:10px 0;}
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--rust);animation:pulse 1s infinite ease-in-out;}
+  @keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
+
+  footer{
+    position:fixed;bottom:0;left:0;right:0;
+    font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-soft);
+    padding:8px 28px;background:var(--paper);border-top:1px solid var(--rule);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <span class="stamp">PDF · DESK</span>
+    <div>
+      <h1>PDF Desk</h1>
+      <div class="tagline">Merge, split, reorder, rotate — one workspace, no round trips.</div>
+    </div>
+  </div>
+  <div class="counts" id="counts">no pages loaded</div>
+</header>
+
+<div class="toolbar">
+  <label class="filebtn" for="fileInput">＋ Add PDF(s)</label>
+  <input type="file" id="fileInput" accept="application/pdf" multiple>
+  <button id="rotateBtn" disabled>⟳ Rotate selected</button>
+  <button id="deleteBtn" disabled>✕ Delete selected</button>
+  <button id="selectAllBtn" disabled>Select all</button>
+  <button id="clearSelBtn" disabled>Clear selection</button>
+  <div class="spacer"></div>
+  <button id="exportSelectedBtn" disabled>⇩ Export selected (split)</button>
+  <button id="exportAllBtn" class="primary" disabled>⇩ Export all pages</button>
+</div>
+
+<main>
+  <div class="empty" id="emptyState">
+    <span class="stamp">EMPTY DESK</span>
+    <h2>Drop some PDFs on the desk</h2>
+    <p>Add one or more files — every page lands here as a card you can drag, rotate, delete, or pull out into a new file.</p>
+  </div>
+  <div id="loadingRow" class="loading-row" style="display:none;">
+    <span class="dot"></span> Reading pages…
+  </div>
+  <div class="grid" id="grid"></div>
+</main>
+
+<footer>pages stay in your browser — nothing is uploaded anywhere</footer>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+const { PDFDocument, degrees } = PDFLib;
+
+// files: array of {name, bytes(ArrayBuffer)}
+// pages: array of {uid, fileIdx, pageIndex(0-based), rotation(extra deg), thumb(dataURL), selected}
+let files = [];
+let pages = [];
+let uidCounter = 0;
+
+const grid = document.getElementById('grid');
+const emptyState = document.getElementById('emptyState');
+const loadingRow = document.getElementById('loadingRow');
+const countsEl = document.getElementById('counts');
+const fileInput = document.getElementById('fileInput');
+
+const rotateBtn = document.getElementById('rotateBtn');
+const deleteBtn = document.getElementById('deleteBtn');
+const selectAllBtn = document.getElementById('selectAllBtn');
+const clearSelBtn = document.getElementById('clearSelBtn');
+const exportSelectedBtn = document.getElementById('exportSelectedBtn');
+const exportAllBtn = document.getElementById('exportAllBtn');
+
+fileInput.addEventListener('change', async (e) => {
+  const fl = Array.from(e.target.files);
+  if (!fl.length) return;
+  await addFiles(fl);
+  fileInput.value = '';
+});
+
+async function addFiles(fileList){
+  loadingRow.style.display = 'flex';
+  for (const f of fileList){
+    const bytes = await f.arrayBuffer();
+    const fileIdx = files.length;
+    files.push({ name: f.name, bytes });
+    await renderThumbs(fileIdx, bytes, f.name);
+  }
+  loadingRow.style.display = 'none';
+  render();
+}
+
+async function renderThumbs(fileIdx, bytes, name){
+  const loadingTask = pdfjsLib.getDocument({ data: bytes.slice(0) });
+  const doc = await loadingTask.promise;
+  for (let i = 1; i <= doc.numPages; i++){
+    const page = await doc.getPage(i);
+    const viewport = page.getViewport({ scale: 0.5 });
+    const canvas = document.createElement('canvas');
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    const ctx = canvas.getContext('2d');
+    await page.render({ canvasContext: ctx, viewport }).promise;
+    pages.push({
+      uid: 'p' + (uidCounter++),
+      fileIdx,
+      pageIndex: i - 1,
+      fileName: name,
+      rotation: 0,
+      thumb: canvas.toDataURL('image/jpeg', 0.72),
+      selected: false
+    });
+  }
+}
+
+function selectedPages(){ return pages.filter(p => p.selected); }
+
+function render(){
+  grid.innerHTML = '';
+  emptyState.style.display = pages.length ? 'none' : 'block';
+  pages.forEach((p, idx) => {
+    const card = document.createElement('div');
+    card.className = 'card' + (p.selected ? ' selected' : '');
+    card.draggable = true;
+    card.dataset.idx = idx;
+
+    card.innerHTML = `
+      <div class="thumbwrap">
+        <img src="${p.thumb}" style="transform:rotate(${p.rotation}deg)">
+        <span class="tag">${p.fileName}</span>
+        <span class="check">${p.selected ? '✓' : ''}</span>
+      </div>
+      <div class="meta">
+        <span>#${idx + 1} · p.${p.pageIndex + 1}</span>
+        <span class="cardbtns">
+          <button class="iconbtn" data-act="rotate" title="Rotate 90°">⟳</button>
+          <button class="iconbtn" data-act="delete" title="Remove page">✕</button>
+        </span>
+      </div>
+    `;
+
+    card.querySelector('.check').addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      p.selected = !p.selected;
+      render();
+    });
+    card.addEventListener('click', () => { p.selected = !p.selected; render(); });
+    card.querySelector('[data-act="rotate"]').addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      p.rotation = (p.rotation + 90) % 360;
+      render();
+    });
+    card.querySelector('[data-act="delete"]').addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      pages.splice(idx, 1);
+      render();
+    });
+
+    card.addEventListener('dragstart', () => card.classList.add('dragging'));
+    card.addEventListener('dragend', () => card.classList.remove('dragging'));
+    card.addEventListener('dragover', (ev) => { ev.preventDefault(); card.classList.add('drag-over'); });
+    card.addEventListener('dragleave', () => card.classList.remove('drag-over'));
+    card.addEventListener('drop', (ev) => {
+      ev.preventDefault();
+      card.classList.remove('drag-over');
+      const fromIdx = +document.querySelector('.dragging').dataset.idx;
+      const toIdx = +card.dataset.idx;
+      if (fromIdx === toIdx) return;
+      const [moved] = pages.splice(fromIdx, 1);
+      pages.splice(toIdx, 0, moved);
+      render();
+    });
+
+    grid.appendChild(card);
+  });
+
+  const selCount = selectedPages().length;
+  countsEl.textContent = `${pages.length} page${pages.length === 1 ? '' : 's'} · ${files.length} file${files.length === 1 ? '' : 's'} loaded${selCount ? ' · ' + selCount + ' selected' : ''}`;
+
+  const hasPages = pages.length > 0;
+  exportAllBtn.disabled = !hasPages;
+  selectAllBtn.disabled = !hasPages;
+  const hasSel = selCount > 0;
+  rotateBtn.disabled = !hasSel;
+  deleteBtn.disabled = !hasSel;
+  clearSelBtn.disabled = !hasSel;
+  exportSelectedBtn.disabled = !hasSel;
+}
+
+rotateBtn.addEventListener('click', () => {
+  selectedPages().forEach(p => p.rotation = (p.rotation + 90) % 360);
+  render();
+});
+deleteBtn.addEventListener('click', () => {
+  pages = pages.filter(p => !p.selected);
+  render();
+});
+selectAllBtn.addEventListener('click', () => {
+  pages.forEach(p => p.selected = true);
+  render();
+});
+clearSelBtn.addEventListener('click', () => {
+  pages.forEach(p => p.selected = false);
+  render();
+});
+
+exportSelectedBtn.addEventListener('click', () => buildAndDownload(selectedPages(), 'split.pdf'));
+exportAllBtn.addEventListener('click', () => buildAndDownload(pages, 'merged.pdf'));
+
+async function buildAndDownload(pageSet, filename){
+  if (!pageSet.length) return;
+  const out = await PDFDocument.create();
+  // cache loaded source docs by fileIdx
+  const cache = {};
+  for (const p of pageSet){
+    if (!cache[p.fileIdx]){
+      cache[p.fileIdx] = await PDFDocument.load(files[p.fileIdx].bytes);
+    }
+  }
+  for (const p of pageSet){
+    const src = cache[p.fileIdx];
+    const [copied] = await out.copyPages(src, [p.pageIndex]);
+    const baseRotation = copied.getRotation().angle || 0;
+    copied.setRotation(degrees((baseRotation + p.rotation) % 360));
+    out.addPage(copied);
+  }
+  const bytes = await out.save();
+  const blob = new Blob([bytes], { type: 'application/pdf' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+render();
+</script>
+</body>
+</html>
