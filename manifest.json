@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "PDF Desk - Merge, Split & Rotate PDFs",
+  "version": "1.0.0",
+  "description": "Reorder, split, merge, and rotate PDF pages directly in your browser. 100% private with zero server uploads.",
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "action": {
+    "default_popup": "index.html",
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    },
+    "default_title": "Open PDF Desk"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  }
+}
